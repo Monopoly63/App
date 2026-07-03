@@ -1,0 +1,73 @@
+name: Android Build & Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag, example: v1.0.0'
+        required: true
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Create tag for manual run
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git tag -f "${{ github.event.inputs.tag }}"
+          git push -f origin "${{ github.event.inputs.tag }}"
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Build APK
+        run: gradle :app:assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: |
+          mkdir -p release
+          cp app/build/outputs/apk/debug/app-debug.apk release/SilentMusic-${{ github.event.inputs.tag || github.ref_name }}.apk
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SilentMusic-apk
+          path: release/*.apk
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ github.event.inputs.tag || github.ref_name }}
+          name: Silent Music ${{ github.event.inputs.tag || github.ref_name }}
+          body: |
+            First Silent Music release.
+
+            Highlights:
+            - Jetpack Compose glassmorphic UI
+            - MediaStore local audio scanner
+            - Room favorites and folder whitelist/exclude rules
+            - Media3 playback service foundation
+            - Jetpack Glance widget foundation
+          files: release/*.apk
