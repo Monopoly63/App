@@ -157,9 +157,12 @@ private fun HablasApp(vm: HablasViewModel) {
                     title = player.title.orEmpty(),
                     artist = player.artist ?: "Unknown Artist",
                     playing = player.isPlaying,
+                    positionMs = player.positionMs,
+                    durationMs = player.durationMs,
                     onPrev = vm::previous,
                     onPlay = vm::playPause,
-                    onNext = vm::next
+                    onNext = vm::next,
+                    onSeek = vm::seek
                 )
             }
             BottomBar(tab, onChange = { tab = it })
@@ -279,17 +282,38 @@ private fun FoldersScreen(tracks: List<AudioTrack>, excluded: Set<String>, onTog
 }
 
 @Composable
-private fun MiniPlayer(title: String, artist: String, playing: Boolean, onPrev: () -> Unit, onPlay: () -> Unit, onNext: () -> Unit) {
-    Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().height(72.dp).glass(RoundedCornerShape(30.dp), .10f).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            AnimatedContent(title, label = "mini-title") { Text(it, color = Color(0xFFF6F1E8), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium) }
-            Text(artist, color = Color.White.copy(.48f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+private fun MiniPlayer(
+    title: String,
+    artist: String,
+    playing: Boolean,
+    positionMs: Long,
+    durationMs: Long,
+    onPrev: () -> Unit,
+    onPlay: () -> Unit,
+    onNext: () -> Unit,
+    onSeek: (Long) -> Unit
+) {
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().height(84.dp).glass(RoundedCornerShape(30.dp), .10f).padding(horizontal = 16.dp, vertical = 10.dp)) {
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                AnimatedContent(title, label = "mini-title") { Text(it, color = Color(0xFFF6F1E8), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium) }
+                Text(artist, color = Color.White.copy(.48f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            GlassCircle(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 40)
+            Spacer(Modifier.width(8.dp))
+            GlassCircle(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", onPlay, size = 46)
+            Spacer(Modifier.width(8.dp))
+            GlassCircle(Icons.Rounded.SkipNext, "Next", onNext, size = 40)
         }
-        GlassCircle(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 42)
-        Spacer(Modifier.width(8.dp))
-        GlassCircle(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", onPlay, size = 48)
-        Spacer(Modifier.width(8.dp))
-        GlassCircle(Icons.Rounded.SkipNext, "Next", onNext, size = 42)
+        val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+        Box(
+            Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(99.dp)).background(Color.White.copy(.12f)).clickable {
+                // Lightweight tap-to-middle seek fallback; full scrubber is planned for the full Now Playing screen.
+                if (durationMs > 0) onSeek(durationMs / 2)
+            }
+        ) {
+            Box(Modifier.fillMaxWidth(progress).height(4.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFF6F1E8).copy(.78f)))
+        }
     }
 }
 

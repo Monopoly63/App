@@ -56,6 +56,7 @@ class HablasViewModel(app: Application) : AndroidViewModel(app) {
     fun playPause() = player.playPause()
     fun next() = player.next()
     fun previous() = player.previous()
+    fun seek(positionMs: Long) = player.seek(positionMs)
 
     fun toggleFavorite(id: Long) {
         val next = _favorites.value.toMutableSet().apply { if (!add(id)) remove(id) }
