@@ -50,6 +50,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextField
+import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.Switch
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -126,9 +129,17 @@ private fun HablasApp(vm: HablasViewModel) {
     val tracks by vm.tracks.collectAsState()
     val favorites by vm.favorites.collectAsState()
     val excluded by vm.excludedFolders.collectAsState()
+    val included by vm.includedFolders.collectAsState()
+    val includeOnly by vm.includeOnlyMode.collectAsState()
     val isScanning by vm.isScanning.collectAsState()
     val player by vm.playerState.collectAsState()
-    val visible = remember(tracks, excluded) { tracks.filter { it.folderPath !in excluded } }
+    val shuffle by vm.shuffle.collectAsState()
+    val repeatMode by vm.repeatMode.collectAsState()
+    var search by remember { mutableStateOf("") }
+    val visible = remember(tracks, excluded, included, includeOnly, search) {
+        tracks.filter { vm.isTrackVisible(it) }
+            .filter { q -> search.isBlank() || q.title.contains(search, true) || q.artist.contains(search, true) || q.album.contains(search, true) || q.folderPath.contains(search, true) }
+    }
     var tab by remember { mutableStateOf(Tab.Songs) }
     var showNowPlaying by remember { mutableStateOf(false) }
 
@@ -142,13 +153,15 @@ private fun HablasApp(vm: HablasViewModel) {
                     Tab.Favorites -> "Your selected premium library"
                 },
                 isScanning = isScanning,
+                query = search,
+                onQuery = { search = it },
                 onScan = { if (hasPermission) vm.scanLibrary() else permissionLauncher.launch(permission) }
             )
             Box(Modifier.weight(1f)) {
                 Crossfade(tab, animationSpec = tween(160), label = "tab") { selected ->
                     when (selected) {
                         Tab.Songs -> SongsScreen(visible, favorites, onPlay = vm::play, onFav = vm::toggleFavorite)
-                        Tab.Folders -> FoldersScreen(tracks, excluded, onToggle = vm::toggleFolder)
+                        Tab.Folders -> FoldersScreen(tracks, excluded, included, includeOnly, onToggleExcluded = vm::toggleFolderExcluded, onToggleIncluded = vm::toggleFolderIncluded, onMode = vm::setIncludeOnlyMode)
                         Tab.Favorites -> SongsScreen(visible.filter { it.id in favorites }, favorites, onPlay = vm::play, onFav = vm::toggleFavorite, empty = "No favorites yet.")
                     }
                 }
@@ -181,7 +194,11 @@ private fun HablasApp(vm: HablasViewModel) {
                 onPrev = vm::previous,
                 onPlay = vm::playPause,
                 onNext = vm::next,
-                onSeek = vm::seek
+                onSeek = vm::seek,
+                shuffle = shuffle,
+                repeatMode = repeatMode,
+                onShuffle = vm::toggleShuffle,
+                onRepeat = vm::cycleRepeat
             )
         }
     }
@@ -213,17 +230,36 @@ private fun GlassBackdrop(art: android.net.Uri?, content: @Composable () -> Unit
 }
 
 @Composable
-private fun TopHeader(title: String, subtitle: String, isScanning: Boolean, onScan: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Rounded.GraphicEq, null, tint = Color(0xFFF6F1E8), modifier = Modifier.size(24.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(title, color = Color(0xFFF6F1E8), fontSize = 34.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-1).sp)
+private fun TopHeader(title: String, subtitle: String, isScanning: Boolean, query: String, onQuery: (String) -> Unit, onScan: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 14.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.GraphicEq, null, tint = Color(0xFFF6F1E8), modifier = Modifier.size(24.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(title, color = Color(0xFFF6F1E8), fontSize = 34.sp, fontWeight = FontWeight.SemiBold, letterSpacing = (-1).sp)
+                }
+                Text(subtitle, color = Color.White.copy(.52f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
-            Text(subtitle, color = Color.White.copy(.52f), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            GlassCircle(icon = Icons.Rounded.Refresh, contentDescription = "Scan", onClick = onScan, spinning = isScanning)
         }
-        GlassCircle(icon = Icons.Rounded.Refresh, contentDescription = "Scan", onClick = onScan, spinning = isScanning)
+        Spacer(Modifier.height(10.dp))
+        TextField(
+            value = query,
+            onValueChange = onQuery,
+            singleLine = true,
+            placeholder = { Text("Search songs, artists, albums, folders", color = Color.White.copy(.35f), fontSize = 12.sp) },
+            modifier = Modifier.fillMaxWidth().height(52.dp).glass(RoundedCornerShape(22.dp), .075f),
+            colors = TextFieldDefaults.colors(
+                focusedContainerColor = Color.Transparent,
+                unfocusedContainerColor = Color.Transparent,
+                disabledContainerColor = Color.Transparent,
+                focusedIndicatorColor = Color.Transparent,
+                unfocusedIndicatorColor = Color.Transparent,
+                focusedTextColor = Color(0xFFF6F1E8),
+                unfocusedTextColor = Color(0xFFF6F1E8)
+            )
+        )
     }
 }
 
@@ -276,23 +312,43 @@ private fun SongRow(track: AudioTrack, isFavorite: Boolean, onPlay: () -> Unit, 
 }
 
 @Composable
-private fun FoldersScreen(tracks: List<AudioTrack>, excluded: Set<String>, onToggle: (String) -> Unit) {
+private fun FoldersScreen(
+    tracks: List<AudioTrack>,
+    excluded: Set<String>,
+    included: Set<String>,
+    includeOnly: Boolean,
+    onToggleExcluded: (String) -> Unit,
+    onToggleIncluded: (String) -> Unit,
+    onMode: (Boolean) -> Unit
+) {
     val folders = remember(tracks) { tracks.groupBy { it.folderPath }.toSortedMap(String.CASE_INSENSITIVE_ORDER) }
     if (folders.isEmpty()) { EmptyState("No folders detected yet. Tap scan."); return }
     LazyColumn(contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 22.dp), modifier = Modifier.fillMaxSize()) {
+        item {
+            Row(Modifier.fillMaxWidth().padding(vertical = 8.dp).glass(RoundedCornerShape(24.dp), .08f).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Include-only mode", color = Color.White.copy(.92f), fontWeight = FontWeight.SemiBold)
+                    Text("Show only selected folders. Perfect for messy devices.", color = Color.White.copy(.45f), fontSize = 11.sp)
+                }
+                Switch(checked = includeOnly, onCheckedChange = onMode)
+            }
+        }
         items(folders.entries.toList(), key = { it.key }) { entry ->
             val off = entry.key in excluded
+            val inc = entry.key in included
             Row(
-                Modifier.fillMaxWidth().padding(vertical = 5.dp).glass(RoundedCornerShape(24.dp), alpha = if (off) .045f else .085f).clickable { onToggle(entry.key) }.padding(14.dp),
+                Modifier.fillMaxWidth().padding(vertical = 5.dp).glass(RoundedCornerShape(24.dp), alpha = if (off) .045f else .085f).padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Icon(Icons.Rounded.Folder, null, tint = if (off) Color.White.copy(.30f) else Color(0xFFEDE8DC), modifier = Modifier.size(28.dp))
                 Spacer(Modifier.width(13.dp))
                 Column(Modifier.weight(1f)) {
                     Text(entry.key, color = Color.White.copy(if (off) .38f else .92f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("${entry.value.size} tracks • ${if (off) "hidden" else "included"}", color = Color.White.copy(.42f), fontSize = 11.sp)
+                    Text("${entry.value.size} tracks • ${if (off) "hidden" else if (inc) "selected" else "available"}", color = Color.White.copy(.42f), fontSize = 11.sp)
                 }
-                Text(if (off) "OFF" else "ON", color = if (off) Color.White.copy(.35f) else Color(0xFFBDEBCB), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(if (inc) "ONLY" else "+", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable { onToggleIncluded(entry.key) }.padding(8.dp), color = if (inc) Color(0xFFBDEBCB) else Color.White.copy(.55f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Spacer(Modifier.width(6.dp))
+                Text(if (off) "OFF" else "ON", modifier = Modifier.clip(RoundedCornerShape(14.dp)).clickable { onToggleExcluded(entry.key) }.padding(8.dp), color = if (off) Color.White.copy(.35f) else Color(0xFFBDEBCB), fontSize = 11.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -347,7 +403,11 @@ private fun NowPlayingScreen(
     onPrev: () -> Unit,
     onPlay: () -> Unit,
     onNext: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    shuffle: Boolean,
+    repeatMode: Int,
+    onShuffle: () -> Unit,
+    onRepeat: () -> Unit
 ) {
     Box(Modifier.fillMaxSize().background(Color(0xEE05060A)).clickable { onClose() }) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -373,6 +433,11 @@ private fun NowPlayingScreen(
                 Text(formatTime(durationMs), color = Color.White.copy(.42f), fontSize = 11.sp)
             }
             Spacer(Modifier.weight(1f))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                Text(if (shuffle) "SHUFFLE ON" else "SHUFFLE", modifier = Modifier.clip(RoundedCornerShape(18.dp)).clickable { onShuffle() }.padding(10.dp), color = if (shuffle) Color(0xFFBDEBCB) else Color.White.copy(.45f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+                Text(when (repeatMode) { 1 -> "REPEAT ALL"; 2 -> "REPEAT ONE"; else -> "REPEAT" }, modifier = Modifier.clip(RoundedCornerShape(18.dp)).clickable { onRepeat() }.padding(10.dp), color = if (repeatMode != 0) Color(0xFFBDEBCB) else Color.White.copy(.45f), fontSize = 11.sp, fontWeight = FontWeight.Bold)
+            }
+            Spacer(Modifier.height(18.dp))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
                 GlassCircle(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 62)
                 Spacer(Modifier.width(24.dp))

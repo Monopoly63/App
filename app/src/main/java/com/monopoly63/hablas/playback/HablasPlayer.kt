@@ -5,6 +5,7 @@ import android.content.Intent
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Player
+import androidx.media3.common.C
 import androidx.media3.exoplayer.ExoPlayer
 import com.monopoly63.hablas.core.AudioTrack
 import kotlinx.coroutines.channels.awaitClose
@@ -49,6 +50,8 @@ class HablasPlayer(private val context: Context) {
         if (player.isPlaying) player.pause() else player.play()
     }
     fun next() { player.seekToNextMediaItem() }
+    fun setShuffle(enabled: Boolean) { player.shuffleModeEnabled = enabled }
+    fun setRepeatMode(mode: Int) { player.repeatMode = when (mode) { 1 -> Player.REPEAT_MODE_ALL; 2 -> Player.REPEAT_MODE_ONE; else -> Player.REPEAT_MODE_OFF } }
     fun previous() { player.seekToPreviousMediaItem() }
     fun seek(positionMs: Long) { player.seekTo(positionMs) }
     fun release() { /* Shared process player is owned by the MediaSessionService/process. */ }
