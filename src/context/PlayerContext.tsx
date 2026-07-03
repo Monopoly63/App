@@ -8,7 +8,7 @@ import {
   useState,
 } from "react";
 import type { ReactNode } from "react";
-import { AccentPalette, DEFAULT_ACCENT, RepeatMode, Track } from "../types";
+import { AccentPalette, DEFAULT_ACCENT, NativeTrackPayload, RepeatMode, Track } from "../types";
 import { parseTrackFile } from "../utils/metadata";
 import { extractAccent } from "../utils/color";
 
@@ -44,6 +44,8 @@ interface PlayerContextValue {
   repeatMode: RepeatMode;
   nowPlayingOpen: boolean;
   addFiles: (files: FileList | File[]) => Promise<void>;
+  scanDeviceLibrary: () => Promise<void>;
+  nativeScanAvailable: boolean;
   toggleFavorite: (id: string) => void;
   isFavorite: (id: string) => boolean;
   setFolderIncluded: (path: string, included: boolean) => void;
@@ -194,6 +196,48 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     };
   }, [repeatMode, shuffle, advance, filteredTracks, currentTrackId]);
 
+  const nativeScanAvailable = typeof window !== "undefined" && Boolean(window.HablasAndroid?.scanDeviceMusic);
+
+  const scanDeviceLibrary = useCallback(async () => {
+    if (!window.HablasAndroid?.scanDeviceMusic) return;
+    setIsLibraryLoading(true);
+    setImportProgress({ done: 0, total: 1 });
+    try {
+      const raw = window.HablasAndroid.scanDeviceMusic();
+      const payload = JSON.parse(raw) as NativeTrackPayload[];
+      const nativeTracks: Track[] = payload.map((item) => ({
+        id: item.id,
+        url: item.url,
+        title: item.title || "Unknown Title",
+        artist: item.artist || "Unknown Artist",
+        album: item.album || "Unknown Album",
+        duration: item.duration || 0,
+        coverUrl: item.coverUrl,
+        folderPath: item.folderPath || "Device Music",
+        relativePath: item.relativePath || item.title,
+        accent: DEFAULT_ACCENT,
+      }));
+      nativeTracks.sort((a, b) =>
+        a.folderPath.localeCompare(b.folderPath) ||
+        a.album.localeCompare(b.album) ||
+        a.title.localeCompare(b.title)
+      );
+      setTracks((prev) => {
+        prev.forEach((t) => {
+          if (t.file) URL.revokeObjectURL(t.url);
+          if (t.coverUrl?.startsWith("blob:")) URL.revokeObjectURL(t.coverUrl);
+        });
+        return nativeTracks;
+      });
+      setCurrentTrackId((current) => current && nativeTracks.some((t) => t.id === current) ? current : nativeTracks[0]?.id ?? null);
+    } catch (error) {
+      console.error("Native music scan failed", error);
+    } finally {
+      setImportProgress(null);
+      setIsLibraryLoading(false);
+    }
+  }, []);
+
   const addFiles = useCallback(async (fileList: FileList | File[]) => {
     const files = Array.from(fileList).filter((f) => f.type.startsWith("audio") || /\.(mp3|m4a|flac|wav|aac|ogg|opus)$/i.test(f.name));
     if (files.length === 0) return;
@@ -204,12 +248,18 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       const relativePath = (file as File & { webkitRelativePath?: string }).webkitRelativePath || file.name;
-      const segments = relativePath.split("/");
-      const folderPath = segments.length > 1 ? segments.slice(0, -1).join("/") : "Imported Files";
+      const segments = relativePath.split("/").filter(Boolean);
       const id = trackId(relativePath, file.size);
 
       try {
         const meta = await parseTrackFile(file);
+        const realFolder = segments.length > 1 ? segments.slice(0, -1).join("/") : "";
+        const smartFolder = meta.album && meta.album !== "Unknown Album"
+          ? `Albums/${meta.album}`
+          : meta.artist && meta.artist !== "Unknown Artist"
+          ? `Artists/${meta.artist}`
+          : "Imported Files";
+        const folderPath = realFolder || smartFolder;
         newTracks.push({
           id,
           file,
@@ -220,7 +270,7 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
           duration: meta.duration,
           coverUrl: meta.coverUrl,
           folderPath,
-          relativePath,
+          relativePath: realFolder ? relativePath : `${folderPath}/${file.name}`,
           accent: DEFAULT_ACCENT,
         });
       } catch {
@@ -232,7 +282,11 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     setTracks((prev) => {
       const existingIds = new Set(prev.map((t) => t.id));
       const merged = [...prev, ...newTracks.filter((t) => !existingIds.has(t.id))];
-      merged.sort((a, b) => a.title.localeCompare(b.title));
+      merged.sort((a, b) =>
+        a.folderPath.localeCompare(b.folderPath) ||
+        a.album.localeCompare(b.album) ||
+        a.title.localeCompare(b.title)
+      );
       return merged;
     });
     setIsLibraryLoading(false);
@@ -292,8 +346,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
 
   const clearLibrary = useCallback(() => {
     tracks.forEach((t) => {
-      URL.revokeObjectURL(t.url);
-      if (t.coverUrl) URL.revokeObjectURL(t.coverUrl);
+      if (t.file || t.url.startsWith("blob:")) URL.revokeObjectURL(t.url);
+      if (t.coverUrl?.startsWith("blob:")) URL.revokeObjectURL(t.coverUrl);
     });
     setTracks([]);
     setCurrentTrackId(null);
@@ -316,6 +370,8 @@ export function PlayerProvider({ children }: { children: ReactNode }) {
     repeatMode,
     nowPlayingOpen,
     addFiles,
+    scanDeviceLibrary,
+    nativeScanAvailable,
     toggleFavorite,
     isFavorite,
     setFolderIncluded,

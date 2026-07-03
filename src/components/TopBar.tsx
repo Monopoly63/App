@@ -1,5 +1,5 @@
 import { useRef } from "react";
-import { LayoutGrid, Plus, FolderInput } from "lucide-react";
+import { LayoutGrid, Plus, FolderInput, ScanLine } from "lucide-react";
 import { usePlayer } from "../context/PlayerContext";
 
 const TAB_TITLES: Record<string, { title: string; sub: string }> = {
@@ -15,7 +15,7 @@ export default function TopBar({
   tab: string;
   onOpenWidget: () => void;
 }) {
-  const { addFiles, isLibraryLoading, importProgress } = usePlayer();
+  const { addFiles, scanDeviceLibrary, nativeScanAvailable, isLibraryLoading, importProgress } = usePlayer();
   const filesInputRef = useRef<HTMLInputElement | null>(null);
   const folderInputRef = useRef<HTMLInputElement | null>(null);
   const meta = TAB_TITLES[tab] ?? TAB_TITLES.all;
@@ -41,6 +41,16 @@ export default function TopBar({
           >
             <LayoutGrid size={16} />
           </button>
+          {nativeScanAvailable && (
+            <button
+              onClick={() => void scanDeviceLibrary()}
+              className="glass-pill flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium text-white transition-transform active:scale-95"
+              aria-label="Scan device music"
+            >
+              <ScanLine size={14} />
+              Scan
+            </button>
+          )}
           <button
             onClick={() => folderInputRef.current?.click()}
             className="glass-pill flex h-9 w-9 items-center justify-center text-white/80 transition-transform active:scale-90"
@@ -53,7 +63,7 @@ export default function TopBar({
             className="glass-pill flex h-9 items-center gap-1.5 rounded-full px-3.5 text-[12.5px] font-medium text-white transition-transform active:scale-95"
           >
             <Plus size={14} />
-            Add music
+            Files
           </button>
         </div>
       </div>

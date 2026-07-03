@@ -32,20 +32,20 @@ export default function BackgroundLayer() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 0.55 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 1.1, ease: "easeInOut" }}
-            className="absolute -inset-16"
+            transition={{ duration: 0.32, ease: "easeOut" }}
+            className="absolute -inset-10 will-change-opacity"
           >
             <img
               src={currentTrack.coverUrl}
               alt=""
-              className="h-full w-full animate-drift object-cover blur-[70px] saturate-[0.65] contrast-[0.92]"
+              className="h-full w-full object-cover blur-[34px] saturate-[0.6] contrast-[0.9] will-change-transform [transform:translate3d(0,0,0)_scale(1.06)]"
             />
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Frosted vignette so foreground glass content stays legible */}
-      <div className="absolute inset-0 bg-black/25" />
+      <div className="absolute inset-0 bg-black/35" />
       <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-black/60" />
       <div className="pointer-events-none absolute inset-0 opacity-[0.05] mix-blend-overlay [background-image:radial-gradient(rgba(255,255,255,0.6)_1px,transparent_1px)] [background-size:3px_3px]" />
     </div>

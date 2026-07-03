@@ -1,6 +1,6 @@
 export interface Track {
   id: string;
-  file: File;
+  file?: File;
   url: string;
   title: string;
   artist: string;
@@ -33,3 +33,24 @@ export const DEFAULT_ACCENT: AccentPalette = {
   soft: "230 14% 58%",
   glow: "230 30% 70%",
 };
+
+
+export interface NativeTrackPayload {
+  id: string;
+  url: string;
+  title: string;
+  artist: string;
+  album: string;
+  duration: number;
+  coverUrl: string | null;
+  folderPath: string;
+  relativePath: string;
+}
+
+declare global {
+  interface Window {
+    HablasAndroid?: {
+      scanDeviceMusic: () => string;
+    };
+  }
+}

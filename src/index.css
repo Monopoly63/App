@@ -37,22 +37,26 @@ body {
   box-shadow:
     0 1px 1px rgba(255, 255, 255, 0.08) inset,
     0 8px 30px rgba(0, 0, 0, 0.35);
-  backdrop-filter: blur(28px) saturate(140%);
-  -webkit-backdrop-filter: blur(28px) saturate(140%);
+  backdrop-filter: blur(14px) saturate(120%);
+  -webkit-backdrop-filter: blur(14px) saturate(120%);
+  transform: translateZ(0);
+  will-change: transform, opacity;
 }
 
 .glass-panel-soft {
   background: linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02));
   border: 1px solid rgba(255, 255, 255, 0.1);
-  backdrop-filter: blur(20px) saturate(130%);
-  -webkit-backdrop-filter: blur(20px) saturate(130%);
+  backdrop-filter: blur(10px) saturate(115%);
+  -webkit-backdrop-filter: blur(10px) saturate(115%);
+  transform: translateZ(0);
 }
 
 .glass-pill {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.14);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  transform: translateZ(0);
 }
 
 @keyframes drift {
@@ -129,4 +133,25 @@ input[type="range"].scrubber::-moz-range-thumb {
   background: #fff;
   box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12);
   cursor: pointer;
+}
+
+
+/* Hablas performance pass: target high-refresh Android WebView. */
+html, body, #root {
+  min-height: 100%;
+  transform: translateZ(0);
+}
+* {
+  backface-visibility: hidden;
+}
+button, .glass-panel, .glass-panel-soft, .glass-pill {
+  contain: layout paint style;
+}
+img {
+  content-visibility: auto;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .hablas-smooth-scroll {
+    scroll-behavior: smooth;
+  }
 }
