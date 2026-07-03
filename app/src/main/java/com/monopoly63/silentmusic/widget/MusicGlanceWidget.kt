@@ -37,7 +37,7 @@ class MusicGlanceWidget : GlanceAppWidget() {
 private fun WidgetContent() {
     Box(GlanceModifier.fillMaxSize().cornerRadius(28.dp).background(ColorProvider(Color(0xAA15171D))).padding(16.dp)) {
         Row(GlanceModifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-            Box(GlanceModifier.size(72.dp).cornerRadius(20.dp).background(ColorProvider(Color(0x33FFFFFF))))
+            Box(GlanceModifier.size(72.dp).cornerRadius(20.dp).background(ColorProvider(Color(0x33FFFFFF)))) {}
             Spacer(GlanceModifier.width(14.dp))
             Column(GlanceModifier.defaultWeight()) {
                 Text("Silent Music", maxLines = 1, style = TextStyle(color = ColorProvider(Color(0xFFF6F3ED)), fontSize = 15.sp, fontWeight = FontWeight.Medium))
