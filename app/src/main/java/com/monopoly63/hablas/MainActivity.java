@@ -12,7 +12,6 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.MediaStore;
-import android.view.Surface;
 import android.view.View;
 import android.view.Window;
 import android.webkit.ValueCallback;
@@ -56,9 +55,6 @@ public class MainActivity extends Activity {
         webView = new WebView(this);
         webView.setBackgroundColor(Color.parseColor("#020203"));
         webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
-        if (Build.VERSION.SDK_INT >= 30) {
-            webView.setFrameRate(120f, Surface.FRAME_RATE_COMPATIBILITY_DEFAULT);
-        }
         setContentView(webView);
         WebSettings s = webView.getSettings();
         s.setJavaScriptEnabled(true);
