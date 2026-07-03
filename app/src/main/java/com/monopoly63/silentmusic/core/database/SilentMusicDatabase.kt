@@ -9,7 +9,7 @@ import com.monopoly63.silentmusic.core.database.dao.FolderRulesDao
 import com.monopoly63.silentmusic.core.database.dao.PlaylistsDao
 import com.monopoly63.silentmusic.core.database.entities.*
 
-@Database(entities = [FavoriteEntity::class, FolderRuleEntity::class, PlaylistEntity::class, PlaylistSongEntity::class], version = 1, exportSchema = true)
+@Database(entities = [FavoriteEntity::class, FolderRuleEntity::class, PlaylistEntity::class, PlaylistSongEntity::class], version = 1, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class SilentMusicDatabase : RoomDatabase() {
     abstract fun favoritesDao(): FavoritesDao

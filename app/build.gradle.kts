@@ -20,9 +20,12 @@ android {
 
     buildFeatures { compose = true }
 
-    release {
-        // Personal-use convenience: produces an installable APK in CI using debug signing.
-        // Replace with real signingConfig before public distribution.
+    buildTypes {
+        release {
+            isMinifyEnabled = false
+            // Personal-use workflow currently publishes debug APK.
+            // Add real release signingConfig before public distribution.
+        }
     }
 }
 
