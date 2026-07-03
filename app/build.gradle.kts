@@ -12,8 +12,8 @@ android {
         applicationId = "com.monopoly63.hablas"
         minSdk = 26
         targetSdk = 35
-        versionCode = 4
-        versionName = "2.1.0"
+        versionCode = 5
+        versionName = "2.2.0"
     }
 
     buildFeatures { compose = true }
@@ -40,4 +40,5 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.5.1")
     implementation("androidx.media3:media3-session:1.5.1")
     implementation("io.coil-kt:coil-compose:2.7.0")
+    implementation("androidx.core:core-ktx:1.15.0")
 }

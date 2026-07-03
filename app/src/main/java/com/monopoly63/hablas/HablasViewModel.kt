@@ -8,6 +8,7 @@ import com.monopoly63.hablas.core.AudioTrack
 import com.monopoly63.hablas.core.MediaStoreScanner
 import com.monopoly63.hablas.playback.HablasPlayer
 import com.monopoly63.hablas.playback.PlayerState
+import com.monopoly63.hablas.widget.HablasWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -35,7 +36,7 @@ class HablasViewModel(app: Application) : AndroidViewModel(app) {
     val playerState: StateFlow<PlayerState> = _playerState
 
     init {
-        viewModelScope.launch { player.state.collect { _playerState.value = it } }
+        viewModelScope.launch { player.state.collect { _playerState.value = it; HablasWidgetProvider.update(getApplication(), it) } }
     }
 
     fun scanLibrary() {

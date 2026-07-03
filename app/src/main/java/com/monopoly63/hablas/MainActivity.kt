@@ -130,6 +130,7 @@ private fun HablasApp(vm: HablasViewModel) {
     val player by vm.playerState.collectAsState()
     val visible = remember(tracks, excluded) { tracks.filter { it.folderPath !in excluded } }
     var tab by remember { mutableStateOf(Tab.Songs) }
+    var showNowPlaying by remember { mutableStateOf(false) }
 
     GlassBackdrop(art = player.artworkUri) {
         Column(Modifier.fillMaxSize().statusBarsPadding()) {
@@ -162,10 +163,26 @@ private fun HablasApp(vm: HablasViewModel) {
                     onPrev = vm::previous,
                     onPlay = vm::playPause,
                     onNext = vm::next,
-                    onSeek = vm::seek
+                    onSeek = vm::seek,
+                    onOpen = { showNowPlaying = true }
                 )
             }
             BottomBar(tab, onChange = { tab = it })
+        }
+        if (showNowPlaying && player.title != null) {
+            NowPlayingScreen(
+                title = player.title.orEmpty(),
+                artist = player.artist ?: "Unknown Artist",
+                art = player.artworkUri,
+                playing = player.isPlaying,
+                positionMs = player.positionMs,
+                durationMs = player.durationMs,
+                onClose = { showNowPlaying = false },
+                onPrev = vm::previous,
+                onPlay = vm::playPause,
+                onNext = vm::next,
+                onSeek = vm::seek
+            )
         }
     }
 }
@@ -291,9 +308,10 @@ private fun MiniPlayer(
     onPrev: () -> Unit,
     onPlay: () -> Unit,
     onNext: () -> Unit,
-    onSeek: (Long) -> Unit
+    onSeek: (Long) -> Unit,
+    onOpen: () -> Unit
 ) {
-    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().height(84.dp).glass(RoundedCornerShape(30.dp), .10f).padding(horizontal = 16.dp, vertical = 10.dp)) {
+    Column(Modifier.padding(horizontal = 14.dp, vertical = 8.dp).fillMaxWidth().height(84.dp).glass(RoundedCornerShape(30.dp), .10f).clickable { onOpen() }.padding(horizontal = 16.dp, vertical = 10.dp)) {
         Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 AnimatedContent(title, label = "mini-title") { Text(it, color = Color(0xFFF6F1E8), maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.Medium) }
@@ -315,6 +333,62 @@ private fun MiniPlayer(
             Box(Modifier.fillMaxWidth(progress).height(4.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFF6F1E8).copy(.78f)))
         }
     }
+}
+
+@Composable
+private fun NowPlayingScreen(
+    title: String,
+    artist: String,
+    art: android.net.Uri?,
+    playing: Boolean,
+    positionMs: Long,
+    durationMs: Long,
+    onClose: () -> Unit,
+    onPrev: () -> Unit,
+    onPlay: () -> Unit,
+    onNext: () -> Unit,
+    onSeek: (Long) -> Unit
+) {
+    Box(Modifier.fillMaxSize().background(Color(0xEE05060A)).clickable { onClose() }) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(24.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("Now Playing", color = Color.White.copy(.55f), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(42.dp))
+            AsyncImage(
+                model = art,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.size(300.dp).clip(RoundedCornerShape(42.dp)).background(Color.White.copy(.08f)).border(1.dp, Color.White.copy(.18f), RoundedCornerShape(42.dp))
+            )
+            Spacer(Modifier.height(34.dp))
+            Text(title, color = Color(0xFFF6F1E8), fontSize = 26.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(6.dp))
+            Text(artist, color = Color.White.copy(.52f), fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(30.dp))
+            val progress = if (durationMs > 0) (positionMs.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f) else 0f
+            Box(Modifier.fillMaxWidth().height(7.dp).clip(RoundedCornerShape(99.dp)).background(Color.White.copy(.13f)).clickable { if (durationMs > 0) onSeek(durationMs / 2) }) {
+                Box(Modifier.fillMaxWidth(progress).height(7.dp).clip(RoundedCornerShape(99.dp)).background(Color(0xFFF6F1E8)))
+            }
+            Row(Modifier.fillMaxWidth().padding(top = 7.dp), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(formatTime(positionMs), color = Color.White.copy(.42f), fontSize = 11.sp)
+                Text(formatTime(durationMs), color = Color.White.copy(.42f), fontSize = 11.sp)
+            }
+            Spacer(Modifier.weight(1f))
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                GlassCircle(Icons.Rounded.SkipPrevious, "Previous", onPrev, size = 62)
+                Spacer(Modifier.width(24.dp))
+                GlassCircle(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", onPlay, size = 78)
+                Spacer(Modifier.width(24.dp))
+                GlassCircle(Icons.Rounded.SkipNext, "Next", onNext, size = 62)
+            }
+            Spacer(Modifier.height(22.dp))
+            Text("Tap outside to close", color = Color.White.copy(.35f), fontSize = 11.sp)
+        }
+    }
+}
+
+private fun formatTime(ms: Long): String {
+    val total = (ms / 1000).coerceAtLeast(0)
+    return "${total / 60}:${(total % 60).toString().padStart(2, '0')}"
 }
 
 @Composable
