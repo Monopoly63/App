@@ -65,7 +65,7 @@ class MediaStoreScanner(private val context: Context) {
                 )
             }
         }
-        return tracks.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.folderPath }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.title })
+        return tracks.sortedWith(compareBy<AudioTrack, String>(String.CASE_INSENSITIVE_ORDER) { it.folderPath }.thenBy(String.CASE_INSENSITIVE_ORDER) { it.title })
     }
 
     private fun clean(value: String?, fallback: String): String {

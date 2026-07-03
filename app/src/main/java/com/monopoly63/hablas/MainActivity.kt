@@ -259,7 +259,7 @@ private fun SongRow(track: AudioTrack, isFavorite: Boolean, onPlay: () -> Unit, 
 private fun FoldersScreen(tracks: List<AudioTrack>, excluded: Set<String>, onToggle: (String) -> Unit) {
     val folders = remember(tracks) { tracks.groupBy { it.folderPath }.toSortedMap(String.CASE_INSENSITIVE_ORDER) }
     if (folders.isEmpty()) { EmptyState("No folders detected yet. Tap scan."); return }
-    LazyColumn(contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp, bottom = 22.dp), modifier = Modifier.fillMaxSize()) {
+    LazyColumn(contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 6.dp, bottom = 22.dp), modifier = Modifier.fillMaxSize()) {
         items(folders.entries.toList(), key = { it.key }) { entry ->
             val off = entry.key in excluded
             Row(
