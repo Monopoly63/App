@@ -1,4 +1,4 @@
-name: Build Hablas APK
+name: Build Hablas Native APK
 
 on:
   push:
@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Release tag, example: v1.0.0'
+        description: 'Release tag, example: v2.0.0'
         required: true
-        default: 'v1.0.0'
+        default: 'v2.0.0'
 
 permissions:
   contents: write
@@ -19,16 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-          cache: 'npm'
-      - name: Build web bundle
-        run: |
-          npm ci
-          npm run build
-          mkdir -p app/src/main/assets
-          cp dist/index.html app/src/main/assets/index.html
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
@@ -42,20 +32,23 @@ jobs:
         run: |
           mkdir -p release
           TAG_NAME="${{ github.event.inputs.tag || github.ref_name }}"
-          cp app/build/outputs/apk/debug/app-debug.apk "release/Hablas-${TAG_NAME}.apk"
+          cp app/build/outputs/apk/debug/app-debug.apk "release/Hablas-Native-${TAG_NAME}.apk"
       - uses: actions/upload-artifact@v4
         with:
-          name: Hablas-apk
+          name: Hablas-Native-apk
           path: release/*.apk
-      - name: Create or update release
+      - name: Create release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.inputs.tag || github.ref_name }}
-          name: Hablas ${{ github.event.inputs.tag || github.ref_name }}
+          name: Hablas Native ${{ github.event.inputs.tag || github.ref_name }}
           body: |
-            Hablas Android APK generated from the uploaded glassmorphic music player package.
+            Hablas rebuilt as a real native Android app.
 
-            - WebView wrapper around the premium glass UI.
-            - Local music selection through Android document picker.
-            - Blurred glass icon.
+            - Kotlin + Jetpack Compose, no WebView.
+            - MediaStore local library scanner.
+            - Folder-first organization for messy devices.
+            - Media3 ExoPlayer playback.
+            - 120Hz-friendly UI pass with reduced expensive blur.
+            - Glass iOS/MagicOS-inspired icon and interface.
           files: release/*.apk

@@ -1,15 +1,17 @@
-# Hablas
+# Hablas Native
 
-Android APK generated from the uploaded premium glassmorphic music player package.
+Hablas is now a real native Android music player. No React. No WebView.
+
+## Stack
+
+- Kotlin
+- Jetpack Compose
+- MediaStore scanner
+- Media3 ExoPlayer
+- Native glassmorphic UI
 
 ## Build
 
 ```bash
-npm ci
-npm run build
-mkdir -p app/src/main/assets
-cp dist/index.html app/src/main/assets/index.html
 gradle :app:assembleDebug
 ```
-
-The GitHub workflow builds and publishes `Hablas-v*.apk` on tag push.
